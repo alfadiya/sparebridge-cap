@@ -22,6 +22,8 @@ entity BreakdownRequest {
   urgency : Integer; // 1=low, 5=high
   status : String(20);
   fulfilledQty : Integer default 0;
+  matchedAt    : Timestamp;
+  matchResults : Association to many MatchResult on matchResults.request = $self;
 }
 
 entity MatchResult {

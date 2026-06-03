@@ -5,11 +5,11 @@ service SpareBridgeService {
   entity Inventory as projection on db.Inventory;
   entity BreakdownRequests as projection on db.BreakdownRequest
     actions {
-      action findMatches() returns array of MatchResults;
+      action findMatches();
     };
   entity MatchResults as projection on db.MatchResult
     actions {
-      action approveMatch() returns TransferOrders;
+      action approveMatch();
     };
   entity TransferOrders as projection on db.TransferOrder;
 }

@@ -15,7 +15,7 @@ annotate service.BreakdownRequests with @(
         {
             $Type  : 'UI.DataFieldForAction',
             Label  : 'Find Matches',
-            Action : 'SpareBridgeService.BreakdownRequests/findMatches',
+            Action : 'SpareBridgeService.findMatches',
         },
     ],
 
@@ -102,6 +102,11 @@ annotate service.BreakdownRequests with @(
                 Label : 'Fulfilled Quantity',
                 Value : fulfilledQty,
             },
+            {
+                $Type : 'UI.DataField',
+                Label : 'Matches Last Found',
+                Value : matchedAt,
+            },
         ],
     },
 
@@ -112,6 +117,69 @@ annotate service.BreakdownRequests with @(
             ID    : 'GeneralInfo',
             Label : 'Breakdown Details',
             Target : '@UI.FieldGroup#GeneralInfo',
+        },
+        {
+            $Type : 'UI.ReferenceFacet',
+            ID    : 'MatchResults',
+            Label : 'Match Results',
+            Target : 'matchResults/@UI.PresentationVariant',
+        },
+    ],
+);
+
+// --- Auto-refresh Match Results after findMatches runs ---
+annotate service.BreakdownRequests actions {
+    findMatches @(
+        Common.SideEffects : {
+            TargetEntities : [ $self, matchResults ]
+        }
+    )
+};
+
+// --- Match Results table columns + Approve button ---
+annotate service.MatchResults with @(
+    UI.PresentationVariant : {
+        SortOrder      : [{
+            Property   : rank,
+            Descending : false
+        }],
+        Visualizations : [ '@UI.LineItem' ]
+    },
+    UI.LineItem : [
+        {
+            $Type : 'UI.DataField',
+            Label : 'Rank',
+            Value : rank,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Source Plant',
+            Value : sourcePlant.name,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Distance (km)',
+            Value : distanceKm,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Transferable Qty',
+            Value : transferableQty,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Fulfils?',
+            Value : canFullyFulfil,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Est. Cost',
+            Value : estimatedCost,
+        },
+        {
+            $Type  : 'UI.DataFieldForAction',
+            Label  : 'Approve',
+            Action : 'SpareBridgeService.approveMatch',
         },
     ],
 );

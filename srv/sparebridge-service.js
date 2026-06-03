@@ -71,6 +71,9 @@ module.exports = cds.service.impl(async function () {
             else protectedCount++
         }
 
+        // Update matchedAt timestamp so UI shows when matching was last run
+        await UPDATE(BreakdownRequest).set({ matchedAt: new Date().toISOString() }).where({ ID: requestID })
+
         // STEP 7: Save each result to the MatchResult table and return them
         // rank starts after the protected (already approved) matches
         const saved = []
@@ -90,7 +93,6 @@ module.exports = cds.service.impl(async function () {
             saved.push(match)
         }
 
-        return saved
     })
 
     this.on('approveMatch', 'MatchResults', async (req) => {
@@ -150,7 +152,6 @@ module.exports = cds.service.impl(async function () {
             .set({ stock: inventory.stock - qtyToSend })
             .where({ plant_ID: match.sourcePlant_ID, material: breakdown.material })
 
-        return transferOrder
     })
 
 })
