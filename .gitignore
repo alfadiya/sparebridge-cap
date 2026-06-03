@@ -1,5 +1,8 @@
 node_modules/
 *.db
 *.db-journal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 gen/
 .env
