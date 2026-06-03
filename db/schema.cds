@@ -30,6 +30,7 @@ entity MatchResult {
   transferableQty : Integer;
   distanceKm : Decimal(9,3);
   estimatedCost : Decimal(12,2);
+  canFullyFulfil : Boolean;
   rank : Integer;
 }
 
