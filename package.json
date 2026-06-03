@@ -7,21 +7,31 @@
   "scripts": {
     "start": "cds-serve",
     "watch": "cds watch",
-    "deploy": "cds deploy --to sqlite"
+    "deploy": "cds deploy --to sqlite",
+    "watch-breakdown-ui": "cds watch --open com.sparebridge.breakdownui/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "dependencies": {
     "@sap/cds": "^9",
     "express": "^4"
   },
   "devDependencies": {
-    "@cap-js/sqlite": "^2"
+    "@cap-js/sqlite": "^2",
+    "cds-plugin-ui5": "^0.13.0"
   },
   "cds": {
     "requires": {
       "db": {
         "kind": "sqlite",
-        "credentials": { "url": "db.sqlite" }
+        "credentials": {
+          "url": "db.sqlite"
+        }
       }
     }
-  }
+  },
+  "workspaces": [
+    "app/*"
+  ],
+  "sapux": [
+    "app/breakdown-ui"
+  ]
 }

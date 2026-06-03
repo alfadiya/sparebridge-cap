@@ -3,9 +3,9 @@ const cds = require('@sap/cds')
 module.exports = cds.service.impl(async function () {
 
     // This runs when someone calls the findMatches action
-    this.on('findMatches', async (req) => {
+    this.on('findMatches', 'BreakdownRequests', async (req) => {
 
-        const { requestID } = req.data  // the ID sent by the caller
+        const requestID = req.params[0].ID  // ID comes from the URL path automatically
 
         // grab the DB tables we need
         const { BreakdownRequest, Inventory, Plants, MatchResult } = cds.entities('sparebridge')
@@ -93,9 +93,9 @@ module.exports = cds.service.impl(async function () {
         return saved
     })
 
-    this.on('approveMatch', async (req) => {
+    this.on('approveMatch', 'MatchResults', async (req) => {
 
-        const { matchID } = req.data
+        const matchID = req.params[0].ID  // ID comes from the URL path automatically
 
         const { BreakdownRequest, Inventory, MatchResult, TransferOrder } = cds.entities('sparebridge')
 

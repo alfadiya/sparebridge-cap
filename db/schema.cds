@@ -15,7 +15,7 @@ entity Inventory {
 }
 
 entity BreakdownRequest {
-  key ID : UUID;
+  key ID : String(20);
   plant : Association to Plants;
   material : String(20);
   quantity : Integer;
