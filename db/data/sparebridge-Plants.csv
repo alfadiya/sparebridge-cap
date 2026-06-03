@@ -1,6 +1,6 @@
 ID,name,city,latitude,longitude
-PLANT1,Northgate Refinery,Mathura,27.492400,77.673700
-PLANT2,Riverside Refinery,Panipat,29.390900,76.963500
-PLANT3,Eastfield Refinery,Barauni,25.470600,86.012500
-PLANT4,Western Refinery,Vadodara,22.307200,73.181200
-PLANT5,Southern Refinery,Haldia,22.066700,88.083300
+P001,IOCL Panipat Refinery,Panipat,29.387200,76.975300
+P002,IOCL Mathura Refinery,Mathura,27.492800,77.673500
+P003,IOCL Barauni Refinery,Begusarai,25.460100,86.066400
+P004,IOCL Gujarat Refinery,Vadodara,22.300900,73.161000
+P005,IOCL Haldia Refinery,Haldia,22.025200,88.068200

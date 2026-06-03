@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "*.cds": "cds",
+    "*.csv": "csv"
+  }
+}
