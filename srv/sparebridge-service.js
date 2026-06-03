@@ -14,11 +14,12 @@ module.exports = cds.service.impl(async function () {
         const breakdown = await SELECT.one.from(BreakdownRequest).where({ ID: requestID })
         if (!breakdown) return req.error(404, 'Breakdown request not found')
 
-        // Edge case: only run matching on NEW requests
-        if (breakdown.status !== 'NEW') return req.error(400, `Request is already ${breakdown.status} — cannot re-run matching`)
+        // Edge case: only run matching on NEW or PARTIAL requests
+        if (breakdown.status === 'APPROVED') return req.error(400, 'Request is already fully approved — no more matching needed')
 
         // STEP 2: Get the GPS location of the plant that needs the part
         const needyPlant = await SELECT.one.from(Plants).where({ ID: breakdown.plant_ID })
+        if (!needyPlant) return req.error(404, `Plant ${breakdown.plant_ID} not found`)
 
         // STEP 3: Find all inventory records for this material across all plants
         const allInventory = await SELECT.from(Inventory).where({ material: breakdown.material })
@@ -35,9 +36,11 @@ module.exports = cds.service.impl(async function () {
         if (surplusStocks.length === 0) return req.error(404, 'No surplus stock found at any plant for this material')
 
         // STEP 5: For each surplus plant, calculate distance and transport cost
+        const remainingQty = breakdown.quantity - (breakdown.fulfilledQty || 0)
         const candidates = []
         for (const inv of surplusStocks) {
             const sourcePlant = await SELECT.one.from(Plants).where({ ID: inv.plant_ID })
+            if (!sourcePlant) continue  // skip this inventory row if plant data is missing
 
             const distKm = calcDistance(
                 needyPlant.latitude, needyPlant.longitude,
@@ -46,7 +49,7 @@ module.exports = cds.service.impl(async function () {
             const transferableQty = inv.stock - inv.safetyStock
             const cost = Math.round(distKm * 10)  // simple rule: ₹10 per km
 
-            const canFullyFulfil = transferableQty >= breakdown.quantity
+            const canFullyFulfil = transferableQty >= remainingQty
             candidates.push({ sourcePlant, transferableQty, distKm, cost, canFullyFulfil })
         }
 
@@ -58,9 +61,18 @@ module.exports = cds.service.impl(async function () {
         })
 
         // Edge case: delete previous match results if findMatches was called before
-        await DELETE.from(MatchResult).where({ request_ID: requestID })
+        // but skip matches that already have a TransferOrder (already approved)
+        const { TransferOrder } = cds.entities('sparebridge')
+        const existingMatches = await SELECT.from(MatchResult).columns('ID').where({ request_ID: requestID })
+        let protectedCount = 0
+        for (const m of existingMatches) {
+            const hasOrder = await SELECT.one.from(TransferOrder).where({ match_ID: m.ID })
+            if (!hasOrder) await DELETE.from(MatchResult).where({ ID: m.ID })
+            else protectedCount++
+        }
 
         // STEP 7: Save each result to the MatchResult table and return them
+        // rank starts after the protected (already approved) matches
         const saved = []
         for (let i = 0; i < candidates.length; i++) {
             const c = candidates[i]
@@ -72,13 +84,73 @@ module.exports = cds.service.impl(async function () {
                 distanceKm: c.distKm,
                 estimatedCost: c.cost,
                 canFullyFulfil: c.canFullyFulfil,
-                rank: i + 1
+                rank: protectedCount + i + 1
             }
             await INSERT.into(MatchResult).entries(match)
             saved.push(match)
         }
 
         return saved
+    })
+
+    this.on('approveMatch', async (req) => {
+
+        const { matchID } = req.data
+
+        const { BreakdownRequest, Inventory, MatchResult, TransferOrder } = cds.entities('sparebridge')
+
+        // STEP 1: Find the chosen match result
+        const match = await SELECT.one.from(MatchResult).where({ ID: matchID })
+        if (!match) return req.error(404, 'Match result not found')
+
+        // STEP 2: Get the breakdown request linked to this match
+        const breakdown = await SELECT.one.from(BreakdownRequest).where({ ID: match.request_ID })
+        if (!breakdown) return req.error(404, 'Breakdown request not found')
+
+        // Edge case: already fully fulfilled — no more approvals needed
+        if (breakdown.status === 'APPROVED') return req.error(400, 'This breakdown request is already fully fulfilled')
+
+        // Edge case: a TransferOrder already exists for this matchID (called twice)
+        const existing = await SELECT.one.from(TransferOrder).where({ match_ID: matchID })
+        if (existing) return req.error(400, 'A transfer order already exists for this match')
+
+        // STEP 3: Re-verify sourcePlant still has enough stock (may have changed since matching)
+        const inventory = await SELECT.one.from(Inventory).where({
+            plant_ID: match.sourcePlant_ID,
+            material: breakdown.material
+        })
+        if (!inventory) return req.error(404, 'Inventory record not found for source plant')
+
+        // Calculate actual qty to send before checking stock
+        const remainingQty = breakdown.quantity - (breakdown.fulfilledQty || 0)
+        const qtyToSend = Math.min(match.transferableQty, remainingQty)
+
+        const currentSurplus = inventory.stock - inventory.safetyStock
+        if (currentSurplus < qtyToSend) return req.error(400, `Source plant stock too low — surplus is now only ${currentSurplus} unit(s)`)
+
+        // STEP 4: Create the TransferOrder
+        const transferOrder = {
+            ID: cds.utils.uuid(),
+            match_ID: matchID,
+            createdAt: new Date().toISOString(),
+            status: 'PENDING'
+        }
+        await INSERT.into(TransferOrder).entries(transferOrder)
+
+        // STEP 5: Update fulfilledQty and decide the new status
+        const newFulfilledQty = (breakdown.fulfilledQty || 0) + qtyToSend
+        const newStatus = newFulfilledQty >= breakdown.quantity ? 'APPROVED' : 'PARTIAL'
+
+        await UPDATE(BreakdownRequest)
+            .set({ status: newStatus, fulfilledQty: newFulfilledQty })
+            .where({ ID: breakdown.ID })
+
+        // STEP 6: Deduct only what is actually being sent from sourcePlant inventory
+        await UPDATE(Inventory)
+            .set({ stock: inventory.stock - qtyToSend })
+            .where({ plant_ID: match.sourcePlant_ID, material: breakdown.material })
+
+        return transferOrder
     })
 
 })

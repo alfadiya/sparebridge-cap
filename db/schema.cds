@@ -21,6 +21,7 @@ entity BreakdownRequest {
   quantity : Integer;
   urgency : Integer; // 1=low, 5=high
   status : String(20);
+  fulfilledQty : Integer default 0;
 }
 
 entity MatchResult {
