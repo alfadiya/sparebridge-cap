@@ -97,7 +97,7 @@ module.exports = cds.service.impl(async function () {
 
     this.on('approveMatch', 'MatchResults', async (req) => {
 
-        const matchID = req.params[0].ID  // ID comes from the URL path automatically
+        const matchID = req.params[1].ID  // params[0]=BreakdownRequest key, params[1]=MatchResult key
 
         const { BreakdownRequest, Inventory, MatchResult, TransferOrder } = cds.entities('sparebridge')
 

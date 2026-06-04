@@ -173,13 +173,14 @@ annotate service.MatchResults with @(
         },
         {
             $Type : 'UI.DataField',
-            Label : 'Est. Cost',
+            Label : 'Est. Cost (₹10/km)',
             Value : estimatedCost,
         },
         {
             $Type  : 'UI.DataFieldForAction',
             Label  : 'Approve',
             Action : 'SpareBridgeService.approveMatch',
+            Inline : true,
         },
     ],
 );
