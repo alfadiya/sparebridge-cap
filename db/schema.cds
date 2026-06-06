@@ -20,9 +20,10 @@ entity BreakdownRequest {
   material : String(20);
   quantity : Integer;
   urgency : Integer; // 1=low, 5=high
-  status : String(20);
-  fulfilledQty : Integer default 0;
-  matchedAt    : Timestamp;
+  status            : String(20) default 'NEW';
+  fulfilledQty      : Integer default 0;
+  matchedAt         : Timestamp;
+  statusCriticality : Integer default 2;
   matchResults : Association to many MatchResult on matchResults.request = $self;
 }
 
@@ -34,7 +35,10 @@ entity MatchResult {
   distanceKm : Decimal(9,3);
   estimatedCost : Decimal(12,2);
   canFullyFulfil : Boolean;
-  rank : Integer;
+  rank              : Integer;
+  status            : String(20) default 'PENDING';
+  canApprove        : Boolean default true;
+  statusCriticality : Integer default 2;
 }
 
 entity TransferOrder {

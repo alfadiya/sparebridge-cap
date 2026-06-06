@@ -93,6 +93,8 @@ module.exports = cds.service.impl(async function () {
             saved.push(match)
         }
 
+        // Return updated BreakdownRequest so Fiori refreshes all fields including matchedAt
+        return SELECT.one.from(BreakdownRequest).where({ ID: requestID })
     })
 
     this.on('approveMatch', 'MatchResults', async (req) => {
@@ -143,15 +145,23 @@ module.exports = cds.service.impl(async function () {
         const newFulfilledQty = (breakdown.fulfilledQty || 0) + qtyToSend
         const newStatus = newFulfilledQty >= breakdown.quantity ? 'APPROVED' : 'PARTIAL'
 
+        const newCriticality = newStatus === 'APPROVED' ? 3 : 2
         await UPDATE(BreakdownRequest)
-            .set({ status: newStatus, fulfilledQty: newFulfilledQty })
+            .set({ status: newStatus, fulfilledQty: newFulfilledQty, statusCriticality: newCriticality })
             .where({ ID: breakdown.ID })
+
+        // Mark this match as APPROVED and disable its button
+        await UPDATE(MatchResult)
+            .set({ status: 'APPROVED', canApprove: false, statusCriticality: 3 })
+            .where({ ID: matchID })
 
         // STEP 6: Deduct only what is actually being sent from sourcePlant inventory
         await UPDATE(Inventory)
             .set({ stock: inventory.stock - qtyToSend })
             .where({ plant_ID: match.sourcePlant_ID, material: breakdown.material })
 
+        // Return updated BreakdownRequest so Fiori refreshes status and fulfilledQty
+        return SELECT.one.from(BreakdownRequest).where({ ID: breakdown.ID })
     })
 
 })

@@ -19,6 +19,12 @@ annotate service.BreakdownRequests with @(
         },
     ],
 
+    // --- Color coding for breakdown status ---
+    UI.DataPoint #StatusDP : {
+        Value       : status,
+        Criticality : statusCriticality
+    },
+
     // --- Columns shown in the LIST page table ---
     UI.LineItem : [
         {
@@ -47,9 +53,9 @@ annotate service.BreakdownRequests with @(
             Value : urgency,
         },
         {
-            $Type : 'UI.DataField',
-            Label : 'Status',
-            Value : status,
+            $Type  : 'UI.DataFieldForAnnotation',
+            Label  : 'Status',
+            Target : '@UI.DataPoint#StatusDP',
         },
         {
             $Type : 'UI.DataField',
@@ -136,6 +142,28 @@ annotate service.BreakdownRequests actions {
     )
 };
 
+// --- Auto-refresh Breakdown Details after approveMatch runs ---
+annotate service.MatchResults actions {
+    approveMatch @(
+        Common.SideEffects : {
+            TargetEntities : [ request ]
+        }
+    )
+};
+
+// --- Color coding for match result status ---
+annotate service.MatchResults with @(
+    UI.DataPoint #MatchStatusDP : {
+        Value       : status,
+        Criticality : statusCriticality
+    }
+);
+
+// --- Disable Approve button when match is already approved ---
+annotate service.MatchResults with actions {
+    approveMatch @(Core.OperationAvailable : canApprove)
+};
+
 // --- Match Results table columns + Approve button ---
 annotate service.MatchResults with @(
     UI.PresentationVariant : {
@@ -175,6 +203,11 @@ annotate service.MatchResults with @(
             $Type : 'UI.DataField',
             Label : 'Est. Cost (₹10/km)',
             Value : estimatedCost,
+        },
+        {
+            $Type  : 'UI.DataFieldForAnnotation',
+            Label  : 'Match Status',
+            Target : '@UI.DataPoint#MatchStatusDP',
         },
         {
             $Type  : 'UI.DataFieldForAction',
