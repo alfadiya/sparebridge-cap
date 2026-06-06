@@ -130,6 +130,12 @@ annotate service.BreakdownRequests with @(
             Label : 'Match Results',
             Target : 'matchResults/@UI.PresentationVariant',
         },
+        {
+            $Type : 'UI.ReferenceFacet',
+            ID    : 'TransferOrders',
+            Label : 'Stock Transfer Orders (STO)',
+            Target : 'transferOrders/@UI.PresentationVariant',
+        },
     ],
 );
 
@@ -213,6 +219,68 @@ annotate service.MatchResults with @(
             $Type  : 'UI.DataFieldForAction',
             Label  : 'Approve',
             Action : 'SpareBridgeService.approveMatch',
+            Inline : true,
+        },
+    ],
+);
+
+// --- Disable STO buttons based on status ---
+annotate service.TransferOrders with actions {
+    markInTransit @(Core.OperationAvailable : canMarkShipped);
+    markDelivered @(Core.OperationAvailable : canMarkDelivered);
+};
+
+// --- Stock Transfer Orders (STO) section ---
+annotate service.TransferOrders with @(
+    UI.PresentationVariant : {
+        SortOrder      : [{ Property: createdAt, Descending: false }],
+        Visualizations : [ '@UI.LineItem' ]
+    },
+    UI.DataPoint #STOStatus : {
+        Value       : status,
+        Criticality : statusCriticality
+    },
+    UI.LineItem : [
+        {
+            $Type : 'UI.DataField',
+            Label : 'From Plant',
+            Value : match.sourcePlant.name,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'To Plant',
+            Value : toPlant.name,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Material',
+            Value : match.request.material,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Quantity',
+            Value : quantity,
+        },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Created On',
+            Value : createdAt,
+        },
+        {
+            $Type  : 'UI.DataFieldForAnnotation',
+            Label  : 'Status',
+            Target : '@UI.DataPoint#STOStatus',
+        },
+        {
+            $Type  : 'UI.DataFieldForAction',
+            Label  : 'Mark Shipped',
+            Action : 'SpareBridgeService.markInTransit',
+            Inline : true,
+        },
+        {
+            $Type  : 'UI.DataFieldForAction',
+            Label  : 'Mark Delivered',
+            Action : 'SpareBridgeService.markDelivered',
             Inline : true,
         },
     ],

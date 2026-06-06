@@ -136,8 +136,12 @@ module.exports = cds.service.impl(async function () {
         const transferOrder = {
             ID: cds.utils.uuid(),
             match_ID: matchID,
+            request_ID: breakdown.ID,
+            toPlant_ID: breakdown.plant_ID,
+            quantity: qtyToSend,               // how many units are being transferred
             createdAt: new Date().toISOString(),
-            status: 'PENDING'
+            status: 'PENDING',
+            statusCriticality: 2
         }
         await INSERT.into(TransferOrder).entries(transferOrder)
 
@@ -162,6 +166,39 @@ module.exports = cds.service.impl(async function () {
 
         // Return updated BreakdownRequest so Fiori refreshes status and fulfilledQty
         return SELECT.one.from(BreakdownRequest).where({ ID: breakdown.ID })
+    })
+
+    // Mark STO as IN_TRANSIT — goods dispatched from source plant
+    this.on('markInTransit', 'TransferOrders', async (req) => {
+        const toID = req.params[1]?.ID || req.params[0].ID
+        const { TransferOrder } = cds.entities('sparebridge')
+
+        const to = await SELECT.one.from(TransferOrder).where({ ID: toID })
+        if (!to) return req.error(404, 'Transfer order not found')
+        if (to.status === 'DELIVERED') return req.error(400, 'Transfer order already delivered')
+
+        await UPDATE(TransferOrder)
+            .set({ status: 'IN_TRANSIT', statusCriticality: 2, canMarkShipped: false, canMarkDelivered: true })
+            .where({ ID: toID })
+
+        return SELECT.one.from(TransferOrder).where({ ID: toID })
+    })
+
+    // Mark STO as DELIVERED — goods received at breakdown plant
+    this.on('markDelivered', 'TransferOrders', async (req) => {
+        const toID = req.params[1]?.ID || req.params[0].ID
+        const { TransferOrder } = cds.entities('sparebridge')
+
+        const to = await SELECT.one.from(TransferOrder).where({ ID: toID })
+        if (!to) return req.error(404, 'Transfer order not found')
+        if (to.status === 'DELIVERED') return req.error(400, 'Transfer order already delivered')
+        if (to.status !== 'IN_TRANSIT') return req.error(400, 'Must mark as shipped before marking delivered')
+
+        await UPDATE(TransferOrder)
+            .set({ status: 'DELIVERED', statusCriticality: 3, canMarkShipped: false, canMarkDelivered: false })
+            .where({ ID: toID })
+
+        return SELECT.one.from(TransferOrder).where({ ID: toID })
     })
 
 })

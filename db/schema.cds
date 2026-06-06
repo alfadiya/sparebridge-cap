@@ -24,7 +24,8 @@ entity BreakdownRequest {
   fulfilledQty      : Integer default 0;
   matchedAt         : Timestamp;
   statusCriticality : Integer default 2;
-  matchResults : Association to many MatchResult on matchResults.request = $self;
+  matchResults   : Association to many MatchResult on matchResults.request = $self;
+  transferOrders : Association to many TransferOrder on transferOrders.request_ID = ID;
 }
 
 entity MatchResult {
@@ -42,8 +43,14 @@ entity MatchResult {
 }
 
 entity TransferOrder {
-  key ID : UUID;
-  match : Association to MatchResult;
-  createdAt : Timestamp;
-  status : String(20);
+  key ID            : UUID;
+  match             : Association to MatchResult;
+  request_ID        : String(20);
+  toPlant           : Association to Plants;
+  quantity          : Integer;
+  createdAt         : Timestamp;
+  status            : String(20) default 'PENDING';
+  statusCriticality : Integer default 2;
+  canMarkShipped    : Boolean default true;
+  canMarkDelivered  : Boolean default false;
 }

@@ -11,5 +11,9 @@ service SpareBridgeService {
     actions {
       action approveMatch() returns BreakdownRequests;
     };
-  entity TransferOrders as projection on db.TransferOrder;
+  entity TransferOrders as projection on db.TransferOrder
+    actions {
+      action markInTransit() returns TransferOrders;
+      action markDelivered() returns TransferOrders;
+    };
 }
