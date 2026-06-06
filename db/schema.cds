@@ -1,5 +1,10 @@
 namespace sparebridge;
 
+entity Material {
+  key code        : String(20);
+      description : String(100);
+}
+
 entity Plants {
   key ID        : String(6);
       name      : String(100);
@@ -15,7 +20,7 @@ entity Inventory {
 }
 
 entity BreakdownRequest {
-  key ID : String(20);
+  key ID : UUID;
   plant : Association to Plants;
   material : String(20);
   quantity : Integer;
@@ -45,7 +50,7 @@ entity MatchResult {
 entity TransferOrder {
   key ID            : UUID;
   match             : Association to MatchResult;
-  request_ID        : String(20);
+  request_ID        : UUID;
   toPlant           : Association to Plants;
   quantity          : Integer;
   createdAt         : Timestamp;

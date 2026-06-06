@@ -1,8 +1,10 @@
 using sparebridge as db from '../db/schema';
 
 service SpareBridgeService {
+  entity Materials as projection on db.Material;
   entity Plants as projection on db.Plants;
   entity Inventory as projection on db.Inventory;
+  @odata.draft.enabled
   entity BreakdownRequests as projection on db.BreakdownRequest
     actions {
       action findMatches() returns BreakdownRequests;

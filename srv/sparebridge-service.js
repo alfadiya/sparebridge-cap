@@ -24,6 +24,16 @@ module.exports = cds.service.impl(async function () {
         // STEP 3: Find all inventory records for this material across all plants
         const allInventory = await SELECT.from(Inventory).where({ material: breakdown.material })
 
+        // Check if requesting plant already has enough stock to cover the need
+        const ownInventory = allInventory.find(inv => inv.plant_ID === breakdown.plant_ID)
+        if (ownInventory) {
+            const ownSurplus = ownInventory.stock - ownInventory.safetyStock
+            if (ownSurplus >= breakdown.quantity) {
+                return req.error(400,
+                    `Your plant already has ${ownSurplus} unit(s) available above safety stock. Use internal stock before requesting a transfer.`)
+            }
+        }
+
         // STEP 4: Keep only plants that have SPARE stock to give
         //   - not the same plant (no point sending to itself)
         //   - stock must be above safetyStock (surplus = stock - safetyStock)

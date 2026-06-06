@@ -1,13 +1,16 @@
 using SpareBridgeService as service from '../../srv/sparebridge-service';
 
 annotate service.BreakdownRequests with @(
+    Capabilities.InsertRestrictions : { Insertable : true },
+    Capabilities.DeleteRestrictions : { Deletable  : false },
+    UI.UpdateHidden                 : true,
 
     // --- Page title shown on the Object Page (detail screen) ---
     UI.HeaderInfo : {
         TypeName       : 'Breakdown Request',
         TypeNamePlural : 'Breakdown Requests',
-        Title          : { Value : ID },
-        Description    : { Value : material }
+        Title          : { Value : material },
+        Description    : { Value : plant.name }
     },
 
     // --- Buttons shown on the DETAIL page toolbar ---
@@ -27,11 +30,6 @@ annotate service.BreakdownRequests with @(
 
     // --- Columns shown in the LIST page table ---
     UI.LineItem : [
-        {
-            $Type : 'UI.DataField',
-            Label : 'Request ID',
-            Value : ID,
-        },
         {
             $Type : 'UI.DataField',
             Label : 'Plant',
@@ -70,18 +68,8 @@ annotate service.BreakdownRequests with @(
         Data : [
             {
                 $Type : 'UI.DataField',
-                Label : 'Request ID',
-                Value : ID,
-            },
-            {
-                $Type : 'UI.DataField',
                 Label : 'Plant',
-                Value : plant.name,
-            },
-            {
-                $Type : 'UI.DataField',
-                Label : 'City',
-                Value : plant.city,
+                Value : plant_ID,
             },
             {
                 $Type : 'UI.DataField',
@@ -99,19 +87,22 @@ annotate service.BreakdownRequests with @(
                 Value : urgency,
             },
             {
-                $Type : 'UI.DataField',
-                Label : 'Status',
-                Value : status,
+                $Type             : 'UI.DataField',
+                Label             : 'Status',
+                Value             : status,
+                ![@UI.Hidden]     : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
             },
             {
-                $Type : 'UI.DataField',
-                Label : 'Fulfilled Quantity',
-                Value : fulfilledQty,
+                $Type             : 'UI.DataField',
+                Label             : 'Fulfilled Quantity',
+                Value             : fulfilledQty,
+                ![@UI.Hidden]     : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
             },
             {
-                $Type : 'UI.DataField',
-                Label : 'Matches Last Found',
-                Value : matchedAt,
+                $Type             : 'UI.DataField',
+                Label             : 'Matches Last Found',
+                Value             : matchedAt,
+                ![@UI.Hidden]     : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
             },
         ],
     },
@@ -125,16 +116,18 @@ annotate service.BreakdownRequests with @(
             Target : '@UI.FieldGroup#GeneralInfo',
         },
         {
-            $Type : 'UI.ReferenceFacet',
-            ID    : 'MatchResults',
-            Label : 'Match Results',
-            Target : 'matchResults/@UI.PresentationVariant',
+            $Type         : 'UI.ReferenceFacet',
+            ID            : 'MatchResults',
+            Label         : 'Match Results',
+            Target        : 'matchResults/@UI.PresentationVariant',
+            ![@UI.Hidden] : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
         },
         {
-            $Type : 'UI.ReferenceFacet',
-            ID    : 'TransferOrders',
-            Label : 'Stock Transfer Orders (STO)',
-            Target : 'transferOrders/@UI.PresentationVariant',
+            $Type         : 'UI.ReferenceFacet',
+            ID            : 'TransferOrders',
+            Label         : 'Stock Transfer Orders (STO)',
+            Target        : 'transferOrders/@UI.PresentationVariant',
+            ![@UI.Hidden] : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
         },
     ],
 );
@@ -285,3 +278,60 @@ annotate service.TransferOrders with @(
         },
     ],
 );
+
+// --- Required fields for create form ---
+annotate service.BreakdownRequests with {
+    plant    @mandatory;
+    material @mandatory;
+    quantity @mandatory;
+    urgency  @mandatory;
+};
+
+// --- Material dropdown ---
+annotate service.BreakdownRequests with {
+    material @(
+        Common.ValueListWithFixedValues : true,
+        Common.ValueList : {
+            CollectionPath  : 'Materials',
+            SearchSupported : true,
+            Parameters      : [
+                {
+                    $Type             : 'Common.ValueListParameterInOut',
+                    LocalDataProperty : material,
+                    ValueListProperty : 'code',
+                },
+                {
+                    $Type             : 'Common.ValueListParameterDisplayOnly',
+                    ValueListProperty : 'description',
+                },
+            ],
+        }
+    )
+};
+
+// --- Plant dropdown for create/edit form ---
+annotate service.BreakdownRequests with {
+    plant @(
+        Common.Text            : plant.name,
+        Common.TextArrangement : #TextOnly,
+        Common.ValueList : {
+            CollectionPath  : 'Plants',
+            SearchSupported : true,
+            Parameters      : [
+                {
+                    $Type             : 'Common.ValueListParameterInOut',
+                    LocalDataProperty : plant_ID,
+                    ValueListProperty : 'ID',
+                },
+                {
+                    $Type             : 'Common.ValueListParameterDisplayOnly',
+                    ValueListProperty : 'name',
+                },
+                {
+                    $Type             : 'Common.ValueListParameterDisplayOnly',
+                    ValueListProperty : 'city',
+                },
+            ],
+        }
+    )
+};
