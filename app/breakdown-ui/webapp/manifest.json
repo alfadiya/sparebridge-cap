@@ -103,6 +103,10 @@
             "settings": {
               "contextPath": "/BreakdownRequests",
               "variantManagement": "Page",
+              "initialLoad": "Enabled",
+              "filterSettings": {
+                "draftEditState": "All"
+              },
               "navigation": {
                 "BreakdownRequests": {
                   "detail": {

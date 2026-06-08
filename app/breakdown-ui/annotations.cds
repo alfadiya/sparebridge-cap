@@ -4,6 +4,7 @@ annotate service.BreakdownRequests with @(
     Capabilities.InsertRestrictions : { Insertable : true },
     Capabilities.DeleteRestrictions : { Deletable  : false },
     UI.UpdateHidden                 : true,
+    UI.DeleteHidden                 : true,
 
     // --- Page title shown on the Object Page (detail screen) ---
     UI.HeaderInfo : {
@@ -60,6 +61,11 @@ annotate service.BreakdownRequests with @(
             Label : 'Fulfilled',
             Value : fulfilledQty,
         },
+        {
+            $Type : 'UI.DataField',
+            Label : 'Raised On',
+            Value : createdAt,
+        },
     ],
 
     // --- Fields shown on the DETAIL page (Object Page) ---
@@ -104,6 +110,12 @@ annotate service.BreakdownRequests with @(
                 Value             : matchedAt,
                 ![@UI.Hidden]     : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
             },
+            {
+                $Type             : 'UI.DataField',
+                Label             : 'Raised On',
+                Value             : createdAt,
+                ![@UI.Hidden]     : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
+            },
         ],
     },
 
@@ -136,7 +148,8 @@ annotate service.BreakdownRequests with @(
 annotate service.BreakdownRequests actions {
     findMatches @(
         Common.SideEffects : {
-            TargetEntities : [ $self, matchResults ]
+            TargetProperties : ['matchedAt'],
+            TargetEntities   : [ $self, matchResults ]
         }
     )
 };
@@ -150,11 +163,15 @@ annotate service.MatchResults actions {
     )
 };
 
-// --- Color coding for match result status ---
+// --- Color coding for match result status and fulfil flag ---
 annotate service.MatchResults with @(
     UI.DataPoint #MatchStatusDP : {
         Value       : status,
         Criticality : statusCriticality
+    },
+    UI.DataPoint #CanFulfilDP : {
+        Value       : canFullyFulfil,
+        Criticality : { $edmJson : { $If : [ { $Path : 'canFullyFulfil' }, 3, 2 ] } }
     }
 );
 
@@ -194,9 +211,9 @@ annotate service.MatchResults with @(
             Value : transferableQty,
         },
         {
-            $Type : 'UI.DataField',
-            Label : 'Fulfils?',
-            Value : canFullyFulfil,
+            $Type  : 'UI.DataFieldForAnnotation',
+            Label  : 'Can Fully Fulfil',
+            Target : '@UI.DataPoint#CanFulfilDP',
         },
         {
             $Type : 'UI.DataField',
@@ -278,6 +295,26 @@ annotate service.TransferOrders with @(
         },
     ],
 );
+
+// --- Filter fields shown in the List Report filter bar ---
+annotate service.BreakdownRequests with @(
+    UI.SelectionFields : [ plant_ID, material, status ]
+);
+
+// --- Labels for filter bar fields ---
+annotate service.BreakdownRequests with {
+    plant    @Common.Label : 'Plant';
+    material @Common.Label : 'Material';
+    status   @Common.Label : 'Status'
+             @Common.ValueListWithFixedValues : true
+             @Common.ValueList : {
+                 CollectionPath  : 'RequestStatuses',
+                 Parameters      : [
+                     { $Type : 'Common.ValueListParameterInOut',      LocalDataProperty : status, ValueListProperty : 'code' },
+                     { $Type : 'Common.ValueListParameterDisplayOnly', ValueListProperty : 'description' }
+                 ]
+             };
+}
 
 // --- Required fields for create form ---
 annotate service.BreakdownRequests with {

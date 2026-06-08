@@ -1,5 +1,18 @@
 namespace sparebridge;
 
+using { managed } from '@sap/cds/common';
+
+type RequestStatus : String(20) enum {
+  NEW      = 'NEW';
+  PARTIAL  = 'PARTIAL';
+  APPROVED = 'APPROVED';
+}
+
+entity RequestStatusCode {
+  key code        : RequestStatus;
+      description : String(50);
+}
+
 entity Material {
   key code        : String(20);
       description : String(100);
@@ -19,13 +32,13 @@ entity Inventory {
   safetyStock : Integer;
 }
 
-entity BreakdownRequest {
+entity BreakdownRequest : managed {
   key ID : UUID;
   plant : Association to Plants;
   material : String(20);
   quantity : Integer;
   urgency : Integer; // 1=low, 5=high
-  status            : String(20) default 'NEW';
+  status            : RequestStatus default 'NEW';
   fulfilledQty      : Integer default 0;
   matchedAt         : Timestamp;
   statusCriticality : Integer default 2;
