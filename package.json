@@ -27,13 +27,7 @@
     },
     "[production]": {
       "requires": {
-        "auth": "dummy",
-        "db": {
-          "kind": "sqlite",
-          "credentials": {
-            "url": ":memory:"
-          }
-        }
+        "auth": "dummy"
       }
     }
   },

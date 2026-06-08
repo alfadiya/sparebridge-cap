@@ -2,9 +2,10 @@
 applications:
 - name: sparebridge
   memory: 512M
-  disk_quota: 512M
+  disk_quota: 2048M
   buildpacks:
   - nodejs_buildpack
   random-route: true
   env:
     NODE_ENV: production
+    NPM_CONFIG_PRODUCTION: false
