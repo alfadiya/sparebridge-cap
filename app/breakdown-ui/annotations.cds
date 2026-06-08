@@ -170,6 +170,7 @@ annotate service.MatchResults actions {
     )
 };
 
+
 // --- Color coding for match result status and fulfil flag ---
 annotate service.MatchResults with @(
     UI.DataPoint #MatchStatusDP : {
@@ -247,14 +248,6 @@ annotate service.TransferOrders with actions {
     markDelivered @(Core.OperationAvailable : canMarkDelivered);
 };
 
-// --- Refresh Replenishment Orders section after delivery ---
-annotate service.TransferOrders actions {
-    markDelivered @(
-        Common.SideEffects : {
-            TargetEntities : [ $self, request, request.replenishmentOrders ]
-        }
-    )
-};
 
 // --- Stock Transfer Orders (STO) section ---
 annotate service.TransferOrders with @(

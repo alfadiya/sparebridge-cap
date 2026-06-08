@@ -160,4 +160,25 @@ SpareBridge operates within the host organisation's existing SAP authentication 
 
 ---
 
+---
+
+## Local Development
+
+**Prerequisites:** Node.js 18+, `@sap/cds-dk` installed globally (`npm i -g @sap/cds-dk`)
+
+```bash
+# Install dependencies
+npm install
+
+# Reset database with seed data (run this after any CSV change)
+npm run deploy
+
+# Start local server with live reload
+cds watch
+```
+
+App runs at `http://localhost:4004` — click the Fiori UI link on the welcome page.
+
+---
+
 *SpareBridge · SAP BTP · CAP Application · Emergency Spare Part Transfer Workflow*

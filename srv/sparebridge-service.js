@@ -14,6 +14,10 @@ module.exports = cds.service.impl(async function () {
         const breakdown = await SELECT.one.from(BreakdownRequest).where({ ID: requestID })
         if (!breakdown) return req.error(404, 'Breakdown request not found')
 
+        // Validate input data
+        if (!breakdown.quantity || breakdown.quantity < 1) return req.error(400, 'Quantity must be at least 1')
+        if (!breakdown.urgency || breakdown.urgency < 1 || breakdown.urgency > 5) return req.error(400, 'Urgency must be between 1 and 5')
+
         // Edge case: only run matching on NEW or PARTIAL requests
         if (breakdown.status === 'APPROVED') return req.error(400, 'Request is already fully approved — no more matching needed')
 
@@ -185,7 +189,8 @@ module.exports = cds.service.impl(async function () {
 
         const to = await SELECT.one.from(TransferOrder).where({ ID: toID })
         if (!to) return req.error(404, 'Transfer order not found')
-        if (to.status === 'DELIVERED') return req.error(400, 'Transfer order already delivered')
+        if (to.status === 'IN_TRANSIT') return req.error(400, 'Transfer order is already marked as shipped')
+        if (to.status === 'DELIVERED') return req.error(400, 'Transfer order is already delivered')
 
         await UPDATE(TransferOrder)
             .set({ status: 'IN_TRANSIT', statusCriticality: 2, canMarkShipped: false, canMarkDelivered: true })
@@ -204,26 +209,27 @@ module.exports = cds.service.impl(async function () {
         if (to.status === 'DELIVERED') return req.error(400, 'Transfer order already delivered')
         if (to.status !== 'IN_TRANSIT') return req.error(400, 'Must mark as shipped before marking delivered')
 
+        // Fetch match for sourcePlant and breakdown for material
+        const match = await SELECT.one.from(MatchResult).where({ ID: to.match_ID })
+        if (!match) return req.error(404, 'Match result not found for this transfer order')
+        const breakdown = await SELECT.one.from(BreakdownRequest).where({ ID: to.request_ID })
+        if (!breakdown) return req.error(404, 'Breakdown request not found for this transfer order')
+
         await UPDATE(TransferOrder)
             .set({ status: 'DELIVERED', statusCriticality: 3, canMarkShipped: false, canMarkDelivered: false })
             .where({ ID: toID })
 
-        // Auto-create replenishment order for source plant
-        const match = await SELECT.one.from(MatchResult).where({ ID: to.match_ID })
-        const breakdown = await SELECT.one.from(BreakdownRequest).where({ ID: to.request_ID })
-        if (match && breakdown) {
-            await INSERT.into(ReplenishmentOrder).entries({
-                ID: cds.utils.uuid(),
-                sourcePlant_ID: match.sourcePlant_ID,
-                material: breakdown.material,
-                quantity: to.quantity,
-                status: 'PENDING',
-                statusCriticality: 2,
-                transferOrder_ID: toID,
-                request_ID: to.request_ID,
-                canMarkReceived: true
-            })
-        }
+        // Create replenishment order now — source plant stock was sent out and needs restocking
+        await INSERT.into(ReplenishmentOrder).entries({
+            ID: cds.utils.uuid(),
+            sourcePlant_ID: match.sourcePlant_ID,
+            material: breakdown.material,
+            quantity: to.quantity,
+            status: 'PENDING',
+            statusCriticality: 2,
+            transferOrder_ID: toID,
+            request_ID: to.request_ID
+        })
 
         return SELECT.one.from(TransferOrder).where({ ID: toID })
     })
