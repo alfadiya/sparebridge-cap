@@ -197,7 +197,7 @@ module.exports = cds.service.impl(async function () {
     // Mark STO as DELIVERED — goods received at breakdown plant
     this.on('markDelivered', 'TransferOrders', async (req) => {
         const toID = req.params[1]?.ID || req.params[0].ID
-        const { TransferOrder } = cds.entities('sparebridge')
+        const { TransferOrder, MatchResult, BreakdownRequest, ReplenishmentOrder } = cds.entities('sparebridge')
 
         const to = await SELECT.one.from(TransferOrder).where({ ID: toID })
         if (!to) return req.error(404, 'Transfer order not found')
@@ -208,7 +208,49 @@ module.exports = cds.service.impl(async function () {
             .set({ status: 'DELIVERED', statusCriticality: 3, canMarkShipped: false, canMarkDelivered: false })
             .where({ ID: toID })
 
+        // Auto-create replenishment order for source plant
+        const match = await SELECT.one.from(MatchResult).where({ ID: to.match_ID })
+        const breakdown = await SELECT.one.from(BreakdownRequest).where({ ID: to.request_ID })
+        if (match && breakdown) {
+            await INSERT.into(ReplenishmentOrder).entries({
+                ID: cds.utils.uuid(),
+                sourcePlant_ID: match.sourcePlant_ID,
+                material: breakdown.material,
+                quantity: to.quantity,
+                status: 'PENDING',
+                statusCriticality: 2,
+                transferOrder_ID: toID,
+                request_ID: to.request_ID,
+                canMarkReceived: true
+            })
+        }
+
         return SELECT.one.from(TransferOrder).where({ ID: toID })
+    })
+
+    // Mark replenishment stock as received — restores source plant inventory
+    this.on('markReceived', 'ReplenishmentOrders', async (req) => {
+        const roID = req.params[1]?.ID || req.params[0].ID
+        const { ReplenishmentOrder, Inventory } = cds.entities('sparebridge')
+
+        const ro = await SELECT.one.from(ReplenishmentOrder).where({ ID: roID })
+        if (!ro) return req.error(404, 'Replenishment order not found')
+        if (ro.status === 'RECEIVED') return req.error(400, 'Already marked as received')
+
+        // Restore source plant inventory
+        const inventory = await SELECT.one.from(Inventory)
+            .where({ plant_ID: ro.sourcePlant_ID, material: ro.material })
+        if (inventory) {
+            await UPDATE(Inventory)
+                .set({ stock: inventory.stock + ro.quantity })
+                .where({ plant_ID: ro.sourcePlant_ID, material: ro.material })
+        }
+
+        await UPDATE(ReplenishmentOrder)
+            .set({ status: 'RECEIVED', statusCriticality: 3, canMarkReceived: false })
+            .where({ ID: roID })
+
+        return SELECT.one.from(ReplenishmentOrder).where({ ID: roID })
     })
 
 })

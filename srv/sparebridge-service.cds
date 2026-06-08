@@ -19,4 +19,8 @@ service SpareBridgeService {
       action markInTransit() returns TransferOrders;
       action markDelivered() returns TransferOrders;
     };
+  entity ReplenishmentOrders as projection on db.ReplenishmentOrder
+    actions {
+      action markReceived() returns ReplenishmentOrders;
+    };
 }

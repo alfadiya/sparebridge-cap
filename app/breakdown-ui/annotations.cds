@@ -141,6 +141,13 @@ annotate service.BreakdownRequests with @(
             Target        : 'transferOrders/@UI.PresentationVariant',
             ![@UI.Hidden] : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
         },
+        {
+            $Type         : 'UI.ReferenceFacet',
+            ID            : 'ReplenishmentOrders',
+            Label         : 'Replenishment Orders',
+            Target        : 'replenishmentOrders/@UI.PresentationVariant',
+            ![@UI.Hidden] : { $edmJson : { $Not : { $Path : 'IsActiveEntity' } } }
+        },
     ],
 );
 
@@ -240,6 +247,15 @@ annotate service.TransferOrders with actions {
     markDelivered @(Core.OperationAvailable : canMarkDelivered);
 };
 
+// --- Refresh Replenishment Orders section after delivery ---
+annotate service.TransferOrders actions {
+    markDelivered @(
+        Common.SideEffects : {
+            TargetEntities : [ $self, request, request.replenishmentOrders ]
+        }
+    )
+};
+
 // --- Stock Transfer Orders (STO) section ---
 annotate service.TransferOrders with @(
     UI.PresentationVariant : {
@@ -315,6 +331,28 @@ annotate service.BreakdownRequests with {
                  ]
              };
 }
+
+// --- Replenishment Orders table ---
+annotate service.ReplenishmentOrders with actions {
+    markReceived @(Core.OperationAvailable : canMarkReceived)
+};
+
+annotate service.ReplenishmentOrders with @(
+    UI.PresentationVariant : {
+        Visualizations : [ '@UI.LineItem' ]
+    },
+    UI.DataPoint #ReplenishStatus : {
+        Value       : status,
+        Criticality : statusCriticality
+    },
+    UI.LineItem : [
+        { $Type : 'UI.DataField',           Label : 'Source Plant', Value : sourcePlant.name },
+        { $Type : 'UI.DataField',           Label : 'Material',     Value : material },
+        { $Type : 'UI.DataField',           Label : 'Quantity',     Value : quantity },
+        { $Type : 'UI.DataFieldForAnnotation', Label : 'Status',    Target : '@UI.DataPoint#ReplenishStatus' },
+        { $Type : 'UI.DataFieldForAction',  Label : 'Mark Received', Action : 'SpareBridgeService.markReceived', Inline : true },
+    ],
+);
 
 // --- Required fields for create form ---
 annotate service.BreakdownRequests with {
